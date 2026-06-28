@@ -1984,7 +1984,7 @@ function OnboardingLayoutPreview() {
         <OnboardingProgress step={2} total={4} />
         <div className="onboarding-pattern-content">
           <div className="onboarding-flow">
-            <OnboardingPrompt message={"이름을 알려주세요."} />
+            <OnboardingPrompt message={"이름이 궁금해."} />
             <div className="onboarding-form">
               <label className="profile-field">
                 <span>{"이름"}</span>
@@ -2138,16 +2138,15 @@ export function MascotStateMatrix() {
 
 const sampleReasonMessage = "유튜브에서 강의 들어야해서 10분만 들을게.";
 const retryReasonMessage = "정말 자료만 확인하고 바로 끄께.";
-const deniedDecisionMessage =
-  "지금은 안 돼. 이유가 확실하지 않아.\n육하원칙에 따라서 말해줘.";
+const deniedDecisionMessage = "안돼, 지금은 허용해줄 수 없어.";
 const retryDeniedDecisionMessage =
   "그래도 안 돼. 지금 요청은 목적이 충분히 분명하지 않아.\n다른 방법을 선택해.";
-const allowedDecisionMessage = "좋아. 이번에는 10분만 허용할게.";
+const allowedDecisionMessage = "그래, 딱 3분만 보도록 해.";
 const defaultChatAppName = "YouTube";
-const thinkingStatusLabel = "AILock이 생각하고 있어요";
+const thinkingStatusLabel = "생각중이에요";
 const retryDecisionLabel = "다시 요청하기";
 const confirmDecisionLabel = "확인";
-const reasonInputPlaceholder = "이유를 입력해줘";
+const reasonInputPlaceholder = "이유를 입력해주세요";
 const chatSubmitFadeMs = 260;
 const chatThinkingResolveMs = 1250;
 
@@ -2163,7 +2162,8 @@ type ChatDecisionPhase =
   | "retryResult";
 
 function getReasonQuestion(appName: string) {
-  return `왜 이 ${appName}을 사용하고자 해?`;
+  const displayName = appName === "YouTube" ? "유튜브" : appName;
+  return `${displayName} 왜 켰어?`;
 }
 
 export function ChatMessage({
@@ -2337,17 +2337,22 @@ export function ReasonComposer({
   appName = defaultChatAppName,
   autoResolve = true,
   initial = "",
+  onAllow,
+  onExit,
   thinking = false,
 }: {
   appName?: string;
   autoResolve?: boolean;
   initial?: string;
+  onAllow?: () => void;
+  onExit?: () => void;
   thinking?: boolean;
 }) {
   const [phase, setPhase] = useState<ChatDecisionPhase>(thinking ? "thinking" : "asking");
   const [reason, setReason] = useState(thinking ? "" : initial);
   const [submittedReason, setSubmittedReason] = useState(initial);
   const [retryReason, setRetryReason] = useState("");
+  const [decision, setDecision] = useState<"allowed" | "denied">("denied");
   const [focused, setFocused] = useState(false);
   const hasContent = reason.length > 0;
   const acceptsInput = phase === "asking" || phase === "editing";
@@ -2380,6 +2385,7 @@ export function ReasonComposer({
       setPhase("retrySubmitting");
     } else {
       setSubmittedReason(nextReason);
+      setDecision(/강의|자료|공부|수업|과제/.test(nextReason) ? "allowed" : "denied");
       setRetryReason("");
       setPhase("submitting");
     }
@@ -2416,7 +2422,15 @@ export function ReasonComposer({
         <>
           <ChatThread>
             {showInitialPrompt ? <ChatMessage>{questionMessage}</ChatMessage> : null}
-            {showResultOnly ? <ChatMessage>{deniedDecisionMessage}</ChatMessage> : null}
+            {showResultOnly ? (
+              <>
+                <ChatMessage>{questionMessage}</ChatMessage>
+                <ChatMessage role="user">{submittedReason}</ChatMessage>
+                <ChatMessage mood={decision === "allowed" ? "success" : "idle"}>
+                  {decision === "allowed" ? allowedDecisionMessage : deniedDecisionMessage}
+                </ChatMessage>
+              </>
+            ) : null}
             {showConversation ? (
               <>
                 {submittedReason ? <ChatMessage role="user">{submittedReason}</ChatMessage> : null}
@@ -2427,12 +2441,12 @@ export function ReasonComposer({
             ) : null}
           </ChatThread>
           {showResultOnly || phase === "retryResult" ? (
-            <ChatInputBar
-              disabled
-              onActivate={startEditingAgain}
-              onClear={startEditingAgain}
-              value={retryDecisionLabel}
-            />
+            <div className="figma-decision-actions">
+              <ChatInputBar disabled onActivate={startEditingAgain} onClear={startEditingAgain} />
+              <AilockButton onClick={decision === "allowed" ? onAllow : onExit}>
+                {decision === "allowed" ? "3분 사용하기" : "나가기"}
+              </AilockButton>
+            </div>
           ) : (
             <ChatInputBar
               expanded={expanded}

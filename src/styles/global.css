@@ -4474,3 +4474,111 @@ code {
     max-width: none;
   }
 }
+
+/* Figma Page 3 screen-flow alignment */
+.figma-onboarding-header {
+  display: grid;
+  align-items: center;
+  min-height: var(--app-header-height);
+  padding: 8px var(--screen-padding-x);
+  background: var(--app-surface);
+}
+
+.figma-onboarding-header .icon-button {
+  justify-self: start;
+}
+
+.onboarding-screen .onboarding-progress,
+.onboarding-screen .onboarding-progress span {
+  border-radius: 0;
+}
+
+.onboarding-screen .onboarding-progress {
+  height: 5px;
+}
+
+.onboarding-screen .onboarding-body {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  padding-top: 12px;
+}
+
+.onboarding-page-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-page-copy h1 {
+  margin: 0;
+  color: var(--app-text-strong);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 34px;
+}
+
+.onboarding-page-copy p,
+.onboarding-complete-copy {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.onboarding-flow:not(.prompt-only) .onboarding-form {
+  margin-top: clamp(88px, 18vh, 142px);
+}
+
+.onboarding-flow:not(.prompt-only) .onboarding-list-step {
+  margin-top: 0;
+}
+
+.figma-name-input {
+  width: 100%;
+  height: var(--bottom-action-height);
+  padding: 0 50px 0 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--bottom-action-radius);
+  background: var(--app-surface);
+  color: var(--app-text-strong);
+  font: inherit;
+  outline: 0;
+}
+
+.figma-name-input:focus {
+  border-color: var(--app-border-strong);
+}
+
+.figma-app-search {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 24px;
+  background: var(--app-surface);
+  color: var(--app-text-muted);
+}
+
+.figma-app-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-text-strong);
+  font: inherit;
+  outline: 0;
+}
+
+.figma-app-search input::placeholder {
+  color: var(--app-text-subtle);
+}
+
+.figma-timer-body {
+  gap: 22px;
+}
+
+.figma-decision-actions {
+  display: grid;
+  gap: 12px;
+}

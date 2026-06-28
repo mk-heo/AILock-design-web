@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  AilockAccordion,
   AilockButton,
   AilockList,
   ContentSectionLabel,
@@ -26,7 +25,6 @@ import {
 } from "../components/ailock";
 import {
   defaultLockTimer,
-  initialLockedAppTimers,
   recordUsageApps,
   type DemoUsageApp,
 } from "../design/demoData";
@@ -41,15 +39,15 @@ type LockedApp = {
   durationSeconds: number;
   startedAt: number;
 };
-type LimitOverlay = "picker" | null;
+type LimitOverlay = "picker" | "timer" | null;
 
-const onboardingLabels = ["인사", "개인정보", "권한", "시작"];
+const onboardingLabels = ["Welcome", "개인정보", "권한", "완료"];
 const HEADER_COLLAPSE_DISTANCE = 121;
 const recordPeriodLabels = {
   hours: "하루",
   minutes: "주간",
 } as const;
-const onboardingPrompts = ["안녕하세요.", "이름을 알려주세요.", "권한을 허용해주세요.", "설정이 완료되었습니다."] as const;
+const onboardingPrompts = ["안녕, 만나서 반가워", "너의 이름은 뭐야?", "", "좋아, 준비됐어"] as const;
 
 function getDefaultLockTimer(): TimeWheelValue {
   return { ...defaultLockTimer };
@@ -69,7 +67,11 @@ function createLockedApp(app: LockableApp, timer: TimeWheelValue, startedAt = Da
 
 function createInitialLockedApps() {
   const startedAt = Date.now();
-  return initialLockedAppTimers.map(({ app, timer }) => createLockedApp(app, timer, startedAt));
+  return [
+    createLockedApp(recordUsageApps[0], { hours: 1, minutes: 22 }, startedAt),
+    createLockedApp(recordUsageApps[1], { hours: 0, minutes: 55 }, startedAt),
+    createLockedApp(recordUsageApps[2], { hours: 0, minutes: 38 }, startedAt),
+  ];
 }
 
 function formatLockDuration(value: TimeWheelValue) {
@@ -245,7 +247,7 @@ function ScreenListButton({
 
 function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
+  const [name, setName] = useState("홍길동");
   const [permissionState, setPermissionState] = useState(() => permissionRows.map((row) => row.granted));
   const prompt = onboardingPrompts[step] ?? onboardingPrompts[0];
   const promptOnly = step === 0 || step === onboardingLabels.length - 1;
@@ -259,28 +261,39 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="app-prototype-screen onboarding-screen">
-      <AppHeader
-        hideBack={step === 0}
-        onBack={() => setStep((value) => Math.max(0, value - 1))}
-        title="AILock"
-        trailing={<span className="onboarding-step-text">{step + 1}/{onboardingLabels.length}</span>}
-      />
+      <header className="figma-onboarding-header">
+        {step > 0 ? (
+          <IconButton direction="left" icon="arrowForward" label="Back" onClick={() => setStep((value) => Math.max(0, value - 1))} variant="header" />
+        ) : <span className="header-button-placeholder" />}
+      </header>
       <OnboardingProgress step={step + 1} total={onboardingLabels.length} />
       <main className="app-screen-body onboarding-body">
+        {step === 1 ? (
+          <div className="onboarding-page-copy">
+            <h1>이름 입력</h1>
+            <p>당신의 이름이 궁금해요.</p>
+          </div>
+        ) : null}
+        {step === 2 ? (
+          <div className="onboarding-page-copy">
+            <h1>권한 설정</h1>
+            <p>잠금과 기록을 위해 필요한 권한을 켜주세요.</p>
+          </div>
+        ) : null}
+        {step === 3 ? <p className="onboarding-complete-copy">설정이 끝났어요. 이제 시작할 수 있어요.</p> : null}
         <div className="onboarding-content-slot">
           <div className={promptOnly ? "onboarding-flow prompt-only" : "onboarding-flow"}>
-            <OnboardingPrompt
-              layout={promptOnly ? "stack" : "row"}
-              message={prompt}
-              mood={step === onboardingLabels.length - 1 ? "success" : "idle"}
-            />
+            {step !== 2 ? (
+              <OnboardingPrompt
+                layout={promptOnly ? "stack" : "row"}
+                message={prompt}
+                mood={step === onboardingLabels.length - 1 ? "success" : "idle"}
+              />
+            ) : null}
 
             {step === 1 ? (
               <div className="onboarding-form">
-                <label className="profile-field">
-                  <span>{"이름"}</span>
-                  <input onChange={(event) => setName(event.target.value)} placeholder={"이름을 입력해주세요"} value={name} />
-                </label>
+                <input aria-label="이름" className="figma-name-input" onChange={(event) => setName(event.target.value)} placeholder="이름을 입력해주세요" value={name} />
               </div>
             ) : null}
 
@@ -337,7 +350,7 @@ function RecordsScreen() {
       <div className="records-date-switcher">
         <div className="icon-field-demo records-date-control">
           <IconButton direction="left" icon="arrowForward" label="Previous day" variant="field" />
-          <strong>{isDaily ? "오늘" : "이번 주"}</strong>
+          <strong>{isDaily ? "6월 20일" : "6월 20일 - 6월 27일"}</strong>
           <IconButton icon="arrowForward" label="Next day" variant="field" />
         </div>
       </div>
@@ -349,12 +362,12 @@ function RecordsScreen() {
         {isDaily ? <DailyUsageGraph data={graphData} /> : <WeeklyUsageGraph data={graphData} />}
       </ScreenSection>
       <ScreenSection>
-        <ContentSectionLabel title={"앱 사용 기록"} trailing={<span className="section-meta">{`${recordUsageApps.length}개`}</span>} />
+        <ContentSectionLabel title={"앱 사용 기록"} />
         <AilockList>
-          {recordUsageApps.map((app, index) => (
+          {recordUsageApps.slice(0, 3).map((app, index) => (
             <div key={app.name}>
               <UsageBar app={app} boost={!isDaily ? 0.08 : 0} />
-              {index !== recordUsageApps.length - 1 ? <RowDivider /> : null}
+              {index !== 2 ? <RowDivider /> : null}
             </div>
           ))}
         </AilockList>
@@ -412,7 +425,6 @@ function LimitsScreen({ onOverlayChange }: { onOverlayChange?: (open: boolean) =
   const [selectedPickerAppName, setSelectedPickerAppName] = useState<string | null>(null);
   const [lockTimerTime, setLockTimerTime] = useState<TimeWheelValue>(() => getDefaultLockTimer());
   const [now, setNow] = useState(() => Date.now());
-  const lockedNames = useMemo(() => new Set(lockedApps.map((item) => item.app.name)), [lockedApps]);
   const selectedPickerApp = useMemo(
     () => recordUsageApps.find((app) => app.name === selectedPickerAppName) ?? null,
     [selectedPickerAppName],
@@ -441,9 +453,9 @@ function LimitsScreen({ onOverlayChange }: { onOverlayChange?: (open: boolean) =
   };
 
   const selectPickerApp = (app: LockableApp) => {
-    if (lockedNames.has(app.name)) return;
-    setSelectedPickerAppName((current) => (current === app.name ? null : app.name));
+    setSelectedPickerAppName(app.name);
     setLockTimerTime(getDefaultLockTimer());
+    setOverlay("timer");
   };
 
   const startLock = () => {
@@ -462,13 +474,13 @@ function LimitsScreen({ onOverlayChange }: { onOverlayChange?: (open: boolean) =
       <CollapsingAppScreen
         bodyClassName="limits-body"
         hideBack
-        subtitle={"집중이 필요한 앱을 선택하고, 잠금 시간을 시작할 수 있어요."}
+        subtitle={"앱 사용 시간을 정하여 잠금 흐름을 관리해요."}
         title={"제한"}
         trailing={<IconButton icon="plus" label="Add app" onClick={openPicker} variant="header" />}
       >
         {lockedApps.length > 0 ? (
           <section className="limit-section">
-            <ContentSectionLabel title={"잠금 앱"} trailing={<span className="section-meta">{`${lockedApps.length}개`}</span>} />
+            <ContentSectionLabel title={"활성 제한"} />
             <AilockList>
               {lockedApps.map((lockedApp, index) => (
                 <div key={lockedApp.app.name}>
@@ -491,51 +503,47 @@ function LimitsScreen({ onOverlayChange }: { onOverlayChange?: (open: boolean) =
       {overlay === "picker" ? (
         <div className="screen-overlay-panel">
           <CollapsingAppScreen
-            bottomAction={
-              <AilockButton disabled={!canStartLock} onClick={startLock}>
-                {canStartLock && selectedPickerApp
-                  ? `${selectedPickerApp.name} ${selectedLockDuration} 잠금하러 가기`
-                  : "앱을 선택하면 잠금할 수 있어요."}
-              </AilockButton>
-            }
             bodyClassName="lock-picker-body"
             mode="detail"
             onBack={closeOverlay}
-            title={"앱 잠금 추가"}
+            title={"앱 선택"}
           >
             <ScreenSection>
-              <ContentSectionLabel title={"모든 앱"} trailing={<span className="section-meta">{`${recordUsageApps.length}개`}</span>} />
+              <label className="figma-app-search">
+                <DesignIcon name="search" size={19} />
+                <input aria-label="앱 이름 검색" placeholder="앱 이름 검색" />
+              </label>
               <AilockList>
-                {recordUsageApps.map((app, index) => {
-                  const alreadyLocked = lockedNames.has(app.name);
-                  const expanded = selectedPickerAppName === app.name;
+                {recordUsageApps.slice(0, 3).map((app, index) => {
                   return (
                     <div className="lock-picker-item" key={app.name}>
-                      <AilockAccordion
-                        className="lock-picker-accordion"
-                        expanded={expanded}
-                        header={
-                          <LockPickerAppRow
-                            app={app}
-                            disabled={alreadyLocked}
-                            expanded={expanded}
-                            onClick={() => selectPickerApp(app)}
-                          />
-                        }
-                      >
-                        <>
-                          <ContentSectionLabel
-                            title={"잠금 타이머"}
-                            trailing={<span className="section-meta">{selectedLockDuration}</span>}
-                          />
-                          <TimeWheelPicker onChange={setLockTimerTime} value={lockTimerTime} />
-                        </>
-                      </AilockAccordion>
-                      {index !== recordUsageApps.length - 1 ? <RowDivider /> : null}
+                      <LockPickerAppRow app={app} onClick={() => selectPickerApp(app)} />
+                      {index !== 2 ? <RowDivider /> : null}
                     </div>
                   );
                 })}
               </AilockList>
+            </ScreenSection>
+          </CollapsingAppScreen>
+        </div>
+      ) : null}
+
+      {overlay === "timer" && selectedPickerApp ? (
+        <div className="screen-overlay-panel">
+          <CollapsingAppScreen
+            bottomAction={<AilockButton onClick={startLock}>잠금 시작</AilockButton>}
+            bodyClassName="figma-timer-body"
+            mode="detail"
+            onBack={() => setOverlay("picker")}
+            title={selectedPickerApp.name}
+          >
+            <ScreenSection>
+              <ContentSectionLabel title="사용 기록" />
+              <WeeklyUsageGraph data={defaultWeeklyUsageData} />
+            </ScreenSection>
+            <ScreenSection>
+              <ContentSectionLabel title="잠금 타이머" trailing={<span className="section-meta">{selectedLockDuration}</span>} />
+              <TimeWheelPicker onChange={setLockTimerTime} value={lockTimerTime} />
             </ScreenSection>
           </CollapsingAppScreen>
         </div>
@@ -548,7 +556,7 @@ function SettingsScreen({ onRestartOnboarding }: { onRestartOnboarding: () => vo
     <CollapsingAppScreen
       bodyClassName="settings-body"
       hideBack
-      subtitle={"앱 사용 경험과 권한 상태를 관리할 수 있어요."}
+      subtitle={"프로필, 권한, 온보딩을 다시 확인해요."}
       title={"설정"}
       trailing={<IconButton icon="heart" label="Like" variant="header" />}
     >

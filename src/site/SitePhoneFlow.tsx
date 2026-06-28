@@ -391,7 +391,12 @@ export function SitePhoneFlow({
       <div className="site-phone-lock">
         <SitePhoneHomeMock activeAppId={activeAppId} onOpenApp={openApp} />
         <div className="site-phone-lock-overlay">
-          <ReasonComposer appName={activeApp.name} key={`${activeApp.id}-${reasonSession}`} />
+          <ReasonComposer
+            appName={activeApp.name}
+            key={`${activeApp.id}-${reasonSession}`}
+            onAllow={() => setSurface("externalApp")}
+            onExit={returnHome}
+          />
         </div>
       </div>
     );
